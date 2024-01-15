@@ -1,0 +1,115 @@
+mql5
+// Total Lock - Forex Robot by Forex Robot Easy Team (forexroboteasy.com)
+
+// Global variables
+input double StopLoss = 50; // Stop loss level in pips
+input double TakeProfit = 100; // Take profit level in pips
+input double LockLoss = 20; // Lock loss level in pips
+input double LockProfit = 40; // Lock profit level in pips
+input double LotSize = 0.01; // Lot size for trading
+int lockTicket = 0; // Ticket number of the lock order
+
+// Initialization function
+void OnInit()
+{
+   // Enable trading
+   TradingAllowed(true);
+}
+
+// Expert Advisor function
+void OnTick()
+{
+   // Check if a lock order is currently active
+   if (lockTicket == 0)
+   {
+      // Check for a sharp market move against the trader
+      if (MarketMoveAgainstTrader())
+      {
+         // Place a counter order (lock) to freeze the loss
+         lockTicket = PlaceLockOrder();
+      }
+   }
+   else
+   {
+      // Check if the lock order should be closed
+      if (ShouldCloseLockOrder())
+      {
+         // Close the lock order
+         CloseLockOrder(lockTicket);
+         lockTicket = 0;
+      }
+   }
+}
+
+// Function to check for a sharp market move against the trader
+bool MarketMoveAgainstTrader()
+{
+   // Calculate the current loss
+   double currentLoss = CalculateCurrentLoss();
+   
+   // Check if the current loss exceeds the lock loss level
+   if (currentLoss > LockLoss)
+   {
+      return true;
+   }
+   
+   return false;
+}
+
+// Function to calculate the current loss
+double CalculateCurrentLoss()
+{
+   // Calculate the loss based on the current market price
+   double currentLoss = MarketInfo(Symbol(), MODE_BID) - OrderOpenPrice();
+   
+   // Convert the loss to pips
+   currentLoss /= MarketInfo(Symbol(), MODE_POINT);
+   
+   return currentLoss;
+}
+
+// Function to place a lock order
+int PlaceLockOrder()
+{
+   // Calculate the lock order price
+   double lockPrice = OrderOpenPrice() - (LockLoss * MarketInfo(Symbol(), MODE_POINT));
+   
+   // Place the lock order
+   int ticket = OrderSend(Symbol(), OP_BUY, LotSize, lockPrice, 0, lockPrice - (TakeProfit * MarketInfo(Symbol(), MODE_POINT)), 0, 'Lock Order', 0, 0, CLR_NONE);
+   
+   return ticket;
+}
+
+// Function to check if the lock order should be closed
+bool ShouldCloseLockOrder()
+{
+   // Calculate the current profit
+   double currentProfit = CalculateCurrentProfit();
+   
+   // Check if the current profit exceeds the lock profit level
+   if (currentProfit > LockProfit)
+   {
+      return true;
+   }
+   
+   return false;
+}
+
+// Function to calculate the current profit
+double CalculateCurrentProfit()
+{
+   // Calculate the profit based on the current market price
+   double currentProfit = MarketInfo(Symbol(), MODE_BID) - OrderOpenPrice();
+   
+   // Convert the profit to pips
+   currentProfit /= MarketInfo(Symbol(), MODE_POINT);
+   
+   return currentProfit;
+}
+
+// Function to close the lock order
+void CloseLockOrder(int ticket)
+{
+   // Close the lock order
+   OrderClose(ticket, OrderLots(), MarketInfo(Symbol(), MODE_BID), 0, CLR_NONE);
+}
